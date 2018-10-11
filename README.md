@@ -1,4 +1,4 @@
 
-<img src="/assets/airmed_logo.png" style="height:64px">
+<img src="/assets/airmed_logo.png" height="64px">
 
 ### Software
