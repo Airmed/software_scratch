@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project>
+    <scripting>
+        <script in="main.bgs"/>
+    </scripting>
+    <hardware>
+        <uart channel="0" baud="115200" api="true" handshake="false"/>
+        <kit vcom="true"/>
+    </hardware>
+    <image out="http_serv.bin" out_hex="http_serv.hex"/>
+    <files>
+        <file path="index.html"/>
+        <file path="sta.html"/>
+        <file path="ap.html"/>
+        <file path="style.css"/>
+        <file path="siliconlabs.png"/>
+    </files>
+</project>

@@ -1,0 +1,157 @@
+# Constants
+const MODE_EP = 1               # AP mode value
+const MODE_AP = 2               # AP mode value
+
+# Variables
+dim ap_channel                  # AP channel
+dim ap_security                 # AP security mode
+dim ap_ssid(32)                 # AP SSID string
+dim ap_ssid_len                 # AP SSID string length
+dim ap_tcp_port                 # AP TCP port to use
+dim ap_tcp_uart_endpoint        # AP UART endpoint number
+dim ap_tcp_endpoint             # AP TCP server client endpoint number
+
+dim connection_step
+dim connected
+dim net_ssid(32)
+dim net_ssid_len
+dim net_password(32)
+dim net_password_len
+
+# Event received when the system has been successfully started up.
+event system_boot(hw, bootloader_version, major, minor, build, revision_len, revision_data)
+  # Initialise variables.
+  ap_tcp_endpoint = 0
+
+  # AP parameters to use. Channel 11, no encryption, SSID "Airmed_WGM110", TCP server port 8080, UART endpoint is 0.
+  ap_channel = 11
+  ap_security = 0
+  ap_ssid_len = 13
+  ap_ssid(0:ap_ssid_len) = "Airmed_WGM110"
+  ap_tcp_port = 8080
+  ap_tcp_uart_endpoint = 0
+  
+  connection_step = 0
+  net_ssid(0:6) = "Mordor"
+  net_ssid_len = 6
+  net_password(0:6) = "dell12345"
+  net_password_len = 9
+  connected = 0
+
+  # Set operating mode to AP.
+  call sme_set_operating_mode(MODE_AP)
+
+  # Enable Wi-Fi, this call will trigger sme_wifi_is_on() event.
+  call sme_wifi_on()
+end
+
+# Event received after Wi-Fi has been switched on.
+event sme_wifi_is_on(state)
+  if connection_step = 5
+    call tcpip_configure(192.168.1.1, 255.255.255.0, 192.168.1.1, 1)
+    #call sme_set_password(net_password_len, net_password(:))
+    call sme_connect_ssid(net_ssid_len, net_ssid(:))
+  else
+    # Set a static IP address (192.168.1.1) with netmask 255.255.255.0.
+    call tcpip_configure(192.168.1.1, 255.255.255.0, 192.168.1.1, 0)
+
+    # Start the AP mode. This call will trigger sme_ap_mode_started() event on success
+    # and sme_ap_mode_failed() on failure.
+    call sme_start_ap_mode(ap_channel, ap_security, ap_ssid_len, ap_ssid(0:ap_ssid_len))
+  end if
+end
+
+# Event received when Wi-Fi has been switched off or there has been
+# a catastrophic failure somewhere.
+event sme_wifi_is_off(state)
+  # Enable Wi-Fi, this call will trigger sme_wifi_is_on() event.
+  call sme_wifi_on()
+end
+
+# Event received after AP mode has been started.
+event sme_ap_mode_started(hw_interface)
+  # Enable DHCP server, leave HTTP and DNS servers disabled.
+  call https_enable(0, 1, 0)
+
+  # Start TCP server on the desired port and route traffic to UART by default.
+  # When a client connects to this port, tcpip_endpoint_status() and endpoint_status()
+  # events will be triggered.
+  call tcpip_start_tcp_server(ap_tcp_port, ap_tcp_uart_endpoint)
+end
+
+# Event received if AP mode startup fails.
+event sme_ap_mode_failed(reason, hw_interface)
+end
+
+# Event received when AP mode has been stopped.
+event sme_ap_mode_stopped(hw_interface)
+end
+
+# Event received after a connection attempt succeeds.
+event sme_connected(status, hw_interface, bssid)
+ # Device is connected.
+ connected = 1
+end
+
+
+# Event received when a TCP/IP endpoint status changes.
+event tcpip_endpoint_status(endpoint, local_ip, local_port, remote_ip, remote_port)
+  # If this is a client connection to our TCP server port, store the endpoint number.
+  if local_port = ap_tcp_port && remote_ip != 0
+    ap_tcp_endpoint = endpoint
+  end if
+end
+
+# Event received when an endpoint status changes.
+event endpoint_status(endpoint, type, streaming, destination, active)
+  # When the client endpoint becomes active, route traffic from UART to it.
+  if endpoint = ap_tcp_endpoint && active = 1
+    call endpoint_set_streaming_destination(ap_tcp_endpoint, -1)
+  end if
+end
+
+dim str(32)
+
+# Event received when BGAPI endpoint receives data
+event endpoint_data(endpoint, data_len, data_data)
+  if endpoint = ap_tcp_endpoint
+  
+    if connection_step = 0
+      str(0:7) = "connect"
+      if memcmp(data_data(0), str(0), 7)
+        call endpoint_send(ap_tcp_endpoint, 12, "Enter SSID: ")
+        connection_step = 1
+      end if
+    else if connection_step = 1
+      connection_step = 2
+    else if connection_step = 2
+      net_ssid_len = data_len
+      memcpy(net_ssid(0), data_data(0), data_len)
+      call endpoint_send(ap_tcp_endpoint, 16, "Enter password: ")
+      connection_step = 3
+    else if connection_step = 3
+      connection_step = 4
+    else if connection_step = 4
+      net_password_len = data_len
+      memcpy(net_password(0), data_data(0), data_len)
+      call endpoint_send(ap_tcp_endpoint, 6, "SSID: ")
+      call endpoint_send(ap_tcp_endpoint, net_ssid_len, net_ssid(:))
+      call endpoint_send(ap_tcp_endpoint, 2, "\r\n")
+      call endpoint_send(ap_tcp_endpoint, 10, "Password: ")
+      call endpoint_send(ap_tcp_endpoint, net_password_len, net_password(:))
+      call endpoint_send(ap_tcp_endpoint, 2, "\r\n")
+      call endpoint_send(ap_tcp_endpoint, 15, "Connecting...\r\n")
+      
+      call sme_set_operating_mode(MODE_EP)
+      call sme_wifi_off()
+      
+      connection_step = 5
+    end if
+    end if
+    end if
+    end if
+    end if
+    # Incoming data from the client, send a reply.
+    #call endpoint_send(ap_tcp_endpoint, data_len, data_data(0))
+  end if
+end

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project>
+    <scripting>
+        <script in="test_wifi_ap.bgs"/>
+    </scripting>
+    <hardware>
+        <uart channel="0" baud="115200" api="true" handshake="false"/>
+        <kit vcom="true"/>
+    </hardware>
+    <image out="test_wifi_ap.bin" out_hex="test_wifi_ap.hex"/>
+</project>
