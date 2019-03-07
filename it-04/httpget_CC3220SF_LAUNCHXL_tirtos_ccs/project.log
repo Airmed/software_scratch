@@ -1,0 +1,14 @@
+
+!CONFIGURATION: 'com.ti.ccstudio.buildDefinitions.TMS470.Debug.394724864' [Tue Feb 19 16:55:34 GMT 2019]
+
+	!TOOL: 'com.ti.ccstudio.buildDefinitions.TMS470_18.1.exe.compilerDebug.622243774'
+
+		!NOTE: Deprecated build flag '--float_support=vfplib' was migrated to '--float_support=none'.
+
+
+!CONFIGURATION: 'com.ti.ccstudio.buildDefinitions.TMS470.Release.1282437479' [Tue Feb 19 16:55:34 GMT 2019]
+
+	!TOOL: 'com.ti.ccstudio.buildDefinitions.TMS470_18.1.exe.compilerRelease.776979083'
+
+		!NOTE: Deprecated build flag '--float_support=vfplib' was migrated to '--float_support=none'.
+
